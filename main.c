@@ -40,8 +40,6 @@ double sec_diff(struct timespec* begin, struct timespec* end) {
         (double)(1e-9 * (end->tv_nsec - begin->tv_nsec));
 }
 
-#define NITER 1e7
-
 int main() {
     unsigned long long i;
     int p = 0;
@@ -57,7 +55,7 @@ int main() {
 
 #define COMPUTE_PARITY(x) p ^= parity_mem(x)
 
-    for (i = 0; i < NITER; ++i) {
+    for (i = 0; i < NITERATIONS; ++i) {
 #      include "data.hi"
     }
 
@@ -67,14 +65,15 @@ int main() {
     clock_gettime(CLOCK_REALTIME, &after_mem);
 
 #define COMPUTE_PARITY(x) p ^= parity_arith(x)
-    for (i = 0; i < NITER; ++i) {
+    for (i = 0; i < NITERATIONS; ++i) {
 #       include "data.hi"
     }
 #undef COMPUTE_PARITY
 
     clock_gettime(CLOCK_REALTIME, &after_arith);
 
-    printf("llu size: %lu; su size: %lu\n",
+    printf("%d iterations; llu size: %lu; su size: %lu\n",
+           NITERATIONS,
            sizeof(unsigned long long),
            sizeof(unsigned short));
     printf("memory parity calculation: %fs\n",
