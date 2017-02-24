@@ -5,7 +5,7 @@
   (dotimes (i n)
     (output-compute-parity (random max))))
 
-(defun process-file (fpath n)
+(defun datagen-process-file (fpath n)
   "process the file at fullpath FPATH ..."
   (let (mybuffer)
     (setq mybuffer (find-file fpath))
