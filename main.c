@@ -30,7 +30,7 @@ static inline int parity_mem(unsigned long long x) {
   */
 }
 
-void fill_parity_hash() {
+void fill_parity_table() {
   unsigned int i = 0;
   for (i = 0; i < 65536; ++i) {
     parities[i] = parity_arith(i);
@@ -38,14 +38,14 @@ void fill_parity_hash() {
 }
 
 double sec_diff(struct timespec* begin, struct timespec* end) {
-  return (double)(end->tv_sec - begin->tv_sec) + 
+  return (double)(end->tv_sec - begin->tv_sec) +
     (double)(1e-9 * (end->tv_nsec - begin->tv_nsec));
 }
 
 int main() {
   unsigned long long i;
   int p = 0;
-  fill_parity_hash();
+  fill_parity_table();
 
   struct timespec resolution;
   struct timespec start;
