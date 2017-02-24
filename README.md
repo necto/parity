@@ -7,7 +7,7 @@ approaches are:
   precomputed parity bits for each and sums them.
   
 To run the benchmark, you'll need `emacs` to generate the random input sequence,
-and `gcc` to compile the resulting source file. After these two tools are in
+and `gcc` to compile the resulting source file. Once these two tools are in
 place, just run:
 
     ./run.sh
