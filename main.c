@@ -2,14 +2,18 @@
 #include <stdio.h>
 
 static inline int parity_arith(unsigned long long x) {
-  unsigned long long y;
-  y = x ^ (x >> 1);
-  y = y ^ (y >> 2);
-  y = y ^ (y >> 4);
-  y = y ^ (y >> 8);
-  y = y ^ (y >> 16);
-  y = y ^ (y >> 32);
-  return y & 1;
+  /* unsigned long long y; */
+  /* y = x ^ (x >> 1); */
+  /* y = y ^ (y >> 2); */
+  /* y = y ^ (y >> 4); */
+  /* y = y ^ (y >> 8); */
+  /* y = y ^ (y >> 16); */
+  /* y = y ^ (y >> 32); */
+  /* return y & 1; */
+  x ^= x >> 1;
+  x ^= x >> 2;
+  x = (x & 0x1111111111111111UL) * 0x1111111111111111UL;
+  return (x >> 60) & 1;
 }
 
 int parities[65536];
@@ -28,10 +32,10 @@ static inline int parity_mem(unsigned long long x) {
   /* return 1 & (parities[a] ^ parities[b] ^ parities[c] ^ parities[d]); */
 
   return
-    parities[0xffff&x] ^
-    parities[0xffff&(x >> 16)] ^
-    parities[0xffff&(x >> 32)] ^
-    parities[0xffff&(x >> 48)];
+    parities[0xffff&(x ^
+                     (x >> 16) ^
+                     (x >> 32) ^
+                     (x >> 48))];
 }
 
 static inline int parity_naive(unsigned long long x) {
