@@ -80,13 +80,59 @@ double sec_diff(struct timespec* begin, struct timespec* end) {
 void report_time_interval(const char* name,
                           struct timespec* begin,
                           struct timespec* end) {
-  printf("%s parity calculation: %fs\n", name, sec_diff(begin, end));
+  printf("%-40s: %f s\n", name, sec_diff(begin, end));
 }
 
-int main() {
+int check_parity_computations_equivalence() {
+  int naive, loop, mem_shift, mem_cast, arith_shift_xor, arith_mul;
+  printf("Check the equivalence of the benchmarked algorithms...\n");
+#define COMPUTE_PARITY(x)                               \
+  naive = parity_naive(x);                              \
+  loop = parity_loop(x);                                \
+  mem_shift = parity_mem_shift(x);                      \
+  mem_cast = parity_mem_cast(x);                        \
+  arith_shift_xor = parity_arith_shift_xor(x);          \
+  arith_mul = parity_arith_mul(x);                      \
+  if (naive != loop && naive != mem_shift &&            \
+      naive != mem_cast && naive != arith_shift_xor &&  \
+      naive != arith_mul) {                             \
+    printf("Error! Parity computations disagree on the parity for %llu:\n" \
+           "naive: %d\n"                                                \
+           "loop: %d\n"                                                 \
+           "lookup+shift: %d\n"                                         \
+           "lookup+cast: %d\n"                                          \
+           "arith+shift&xor: %d\n"                                      \
+           "arith+mul: %d\n",                                           \
+           x,                                                           \
+           naive, loop,                                                 \
+           mem_shift, mem_cast,                                         \
+           arith_shift_xor, arith_mul);                                 \
+    return 0;                                                           \
+  }
+
+# include "data.hi"
+#undef COMPUTE_PARITY
+
+  printf("All computatins agree.\n");
+  return 1;
+}
+
+static inline int bench_function(int (* fun)(unsigned long long),
+                                 struct timespec *end_time,
+                                 int p) {
   unsigned long long i;
+#define COMPUTE_PARITY(x) p ^= fun(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, end_time);
+  return p;
+}
+
+void run_benchmark() {
   int p = 0;
-  struct timespec resolution;
   struct timespec start;
   struct timespec after_naive;
   struct timespec after_loop;
@@ -95,68 +141,14 @@ int main() {
   struct timespec after_arith_shift_xor;
   struct timespec after_arith_mul;
 
-  printf("Testing 6 parity bit computation implementations with:\n"
-         "%d iterations;\n"
-         "unsigned long long size: %lu (must be 8);\n"
-         "unsigned short size: %lu (must be 2);\n",
-         NITERATIONS,
-         sizeof(unsigned long long),
-         sizeof(unsigned short));
-
-  fill_parity_table();
-
-  clock_getres(CLOCK_REALTIME, &resolution);
-  printf("clock resolution: %f\n\n",
-         (double)(resolution.tv_sec) + (double)(1e-9*resolution.tv_nsec));
   clock_gettime(CLOCK_REALTIME, &start);
 
-#define COMPUTE_PARITY(x) p ^= parity_naive(x)
-  for (i = 0; i < NITERATIONS; ++i) {
-#   include "data.hi"
-  }
-#undef COMPUTE_PARITY
-
-  clock_gettime(CLOCK_REALTIME, &after_naive);
-
-#define COMPUTE_PARITY(x) p ^= parity_loop(x)
-  for (i = 0; i < NITERATIONS; ++i) {
-#   include "data.hi"
-  }
-#undef COMPUTE_PARITY
-
-  clock_gettime(CLOCK_REALTIME, &after_loop);
-
-#define COMPUTE_PARITY(x) p ^= parity_mem_shift(x)
-  for (i = 0; i < NITERATIONS; ++i) {
-#   include "data.hi"
-  }
-#undef COMPUTE_PARITY
-
-  clock_gettime(CLOCK_REALTIME, &after_mem_shift);
-
-#define COMPUTE_PARITY(x) p ^= parity_mem_cast(x)
-  for (i = 0; i < NITERATIONS; ++i) {
-#   include "data.hi"
-  }
-#undef COMPUTE_PARITY
-
-  clock_gettime(CLOCK_REALTIME, &after_mem_cast);
-
-#define COMPUTE_PARITY(x) p ^= parity_arith_shift_xor(x)
-  for (i = 0; i < NITERATIONS; ++i) {
-#   include "data.hi"
-  }
-#undef COMPUTE_PARITY
-
-  clock_gettime(CLOCK_REALTIME, &after_arith_shift_xor);
-
-#define COMPUTE_PARITY(x) p ^= parity_arith_mul(x)
-  for (i = 0; i < NITERATIONS; ++i) {
-#   include "data.hi"
-  }
-#undef COMPUTE_PARITY
-
-  clock_gettime(CLOCK_REALTIME, &after_arith_mul);
+  p = bench_function(parity_naive, &after_naive, p);
+  p = bench_function(parity_loop, &after_loop, p);
+  p = bench_function(parity_mem_shift, &after_mem_shift, p);
+  p = bench_function(parity_mem_cast, &after_mem_cast, p);
+  p = bench_function(parity_arith_shift_xor, &after_arith_shift_xor, p);
+  p = bench_function(parity_arith_mul, &after_arith_mul, p);
 
   report_time_interval("naive", &start, &after_naive);
   report_time_interval("loop", &after_naive, &after_loop);
@@ -176,5 +168,27 @@ int main() {
     printf("\nthe grand total (sum of all parities for"
            " all methods and numbers): even\n");
   }
+}
+
+int main() {
+  struct timespec resolution;
+  printf("Testing 6 parity bit computation implementations with:\n"
+         "%d iterations;\n"
+         "unsigned long long size: %lu (must be 8);\n"
+         "unsigned short size: %lu (must be 2);\n",
+         NITERATIONS,
+         sizeof(unsigned long long),
+         sizeof(unsigned short));
+
+  fill_parity_table();
+
+  clock_getres(CLOCK_REALTIME, &resolution);
+  printf("Clock resolution: %f\n\n",
+         (double)(resolution.tv_sec) + (double)(1e-9*resolution.tv_nsec));
+
+  if (!check_parity_computations_equivalence())
+    return 1;
+
+  run_benchmark();
   return 0;
 }
