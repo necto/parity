@@ -88,3 +88,6 @@ real	25m1.052s
 user	25m0.932s
 sys	0m0.008s
 ```
+
+Do you know a faster algorithm? Did you spot a measurement mistake? Pull
+requests are welcome!
