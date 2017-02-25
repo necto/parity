@@ -5,7 +5,7 @@
 /*
   A prepopulated array for parity value of each possible unsigned short value.
  */
-int parities[USHRT_MAX];
+static int parities[USHRT_MAX];
 
 static inline int parity_arith_shift_xor(unsigned long long x) {
   unsigned long long y;
@@ -65,25 +65,25 @@ static inline int parity_loop(unsigned long long x) {
   return parity;
 }
 
-void fill_parity_table() {
+static void fill_parity_table() {
   unsigned int i = 0;
   for (i = 0; i < USHRT_MAX; ++i) {
     parities[i] = parity_arith_shift_xor(i);
   }
 }
 
-double sec_diff(struct timespec* begin, struct timespec* end) {
+static double sec_diff(struct timespec* begin, struct timespec* end) {
   return (double)(end->tv_sec - begin->tv_sec) +
     (double)(1e-9 * (end->tv_nsec - begin->tv_nsec));
 }
 
-void report_time_interval(const char* name,
-                          struct timespec* begin,
-                          struct timespec* end) {
+static void report_time_interval(const char* name,
+                                 struct timespec* begin,
+                                 struct timespec* end) {
   printf("%-40s: %f s\n", name, sec_diff(begin, end));
 }
 
-int check_parity_computations_equivalence() {
+static int check_parity_computations_equivalence() {
   int naive, loop, mem_shift, mem_cast, arith_shift_xor, arith_mul;
   printf("Check the equivalence of the benchmarked algorithms...\n");
 #define COMPUTE_PARITY(x)                               \
@@ -117,21 +117,8 @@ int check_parity_computations_equivalence() {
   return 1;
 }
 
-static inline int bench_function(int (* fun)(unsigned long long),
-                                 struct timespec *end_time,
-                                 int p) {
+static void run_benchmark() {
   unsigned long long i;
-#define COMPUTE_PARITY(x) p ^= fun(x)
-  for (i = 0; i < NITERATIONS; ++i) {
-#   include "data.hi"
-  }
-#undef COMPUTE_PARITY
-
-  clock_gettime(CLOCK_REALTIME, end_time);
-  return p;
-}
-
-void run_benchmark() {
   int p = 0;
   struct timespec start;
   struct timespec after_naive;
@@ -145,12 +132,54 @@ void run_benchmark() {
 
   clock_gettime(CLOCK_REALTIME, &start);
 
-  p = bench_function(parity_naive, &after_naive, p);
-  p = bench_function(parity_loop, &after_loop, p);
-  p = bench_function(parity_mem_shift, &after_mem_shift, p);
-  p = bench_function(parity_mem_cast, &after_mem_cast, p);
-  p = bench_function(parity_arith_shift_xor, &after_arith_shift_xor, p);
-  p = bench_function(parity_arith_mul, &after_arith_mul, p);
+#define COMPUTE_PARITY(x) p ^= parity_naive(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_naive);
+
+#define COMPUTE_PARITY(x) p ^= parity_loop(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_loop);
+
+#define COMPUTE_PARITY(x) p ^= parity_mem_shift(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_mem_shift);
+
+#define COMPUTE_PARITY(x) p ^= parity_mem_cast(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_mem_cast);
+
+#define COMPUTE_PARITY(x) p ^= parity_arith_shift_xor(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_arith_shift_xor);
+
+#define COMPUTE_PARITY(x) p ^= parity_arith_mul(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_arith_mul);
+
 
   report_time_interval("naive", &start, &after_naive);
   report_time_interval("loop", &after_naive, &after_loop);

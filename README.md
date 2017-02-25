@@ -2,7 +2,7 @@
 
 A simple benchmark that compares serveral approaches to compute a parity bit.
 Most of the approaches are taken from
-http://www.graphics.stanford.edu/~seander/bithacks.html#ParityLookupTable
+http://www.graphics.stanford.edu/~seander/bithacks.html
 and somewhat modified:
 * Naive(`parity_naive`): extract each bit individually (with shift and mask) and
   xor them
@@ -54,15 +54,15 @@ $ ./run.sh
          with -o0 optimization level
 [run.sh] Generating input data ...
 
-real	0m0.341s
-user	0m0.308s
-sys	0m0.028s
+real	0m0.474s
+user	0m0.368s
+sys	0m0.044s
 
 [run.sh] Compiling the benchmark ...
 
-real	1m15.642s
-user	1m11.660s
-sys	0m3.904s
+real	2m7.871s
+user	2m1.828s
+sys	0m5.884s
 
 [run.sh] Running the benchmark ...
 Testing 6 parity bit computation implementations with:
@@ -75,18 +75,18 @@ Check the equivalence of the benchmarked algorithms...
 All computatins agree.
 Running the benchmark. This may take long time...
 
-naive                                   : 235.517098 s
-loop                                    : 831.584979 s
-lookup with arith decomposition         : 100.391544 s
-lookup with type cast decomposition     : 100.590350 s
-arithmetic with shift&xor formula       : 131.424370 s
-arithmetic with multiplication formula  : 101.524371 s
+naive                                   : 205.437784 s
+loop                                    : 815.794358 s
+lookup with arith decomposition         : 49.138156 s
+lookup with type cast decomposition     : 57.031758 s
+arithmetic with shift&xor formula       : 61.058782 s
+arithmetic with multiplication formula  : 56.664941 s
 
 the grand total (sum of all parities for all methods and numbers): even
 
-real	25m1.052s
-user	25m0.932s
-sys	0m0.008s
+real	20m45.142s
+user	20m44.448s
+sys	0m0.072s
 ```
 
 Do you know a faster algorithm? Did you spot a measurement mistake? Pull
