@@ -5,8 +5,8 @@
 # * emacs to generate the input sequence and
 # * gcc to compile the resulting source code.
 
-NUMBER_OF_DIFFERENT_NUMBERS=10000
-NUMBER_OF_ITERATIONS=1000
+NUMBER_OF_DIFFERENT_NUMBERS=100000
+NUMBER_OF_ITERATIONS=100000
 OPTIMIZATION_LEVEL=0
 
 rm -f data.hi
