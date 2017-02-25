@@ -21,16 +21,18 @@ and somewhat modified:
     shift and masks
   * with type case decomposition (`parity_mem_cast`) - extracts the 16-bit words
     using static type cast of the 64-bit integer into an array of 16-bit integers.
-  
+    
+## Try it yourself!
+
 To run the benchmark, you'll need `emacs` to generate the random input sequence,
 and `gcc` to compile the resulting source file. Once these two tools are in
 place, just:
 
     ./run.sh
 
-To see the results for you machine.
+To see the results for you machine. The benchmark expects a 64-bit system.
 
-# Files
+## Files
 
 - `main.c` contains the test driver and the parity computation implementations to
 compare 
@@ -40,3 +42,49 @@ benchmark parameters.
 - `generate-data.el` an Emacs lisp file that generates `data.hi` that contains a
   list of calls for parity computation on a number of randomly generated inputs, 
   to be included into `main.c`
+  
+## Output
+Here is an example output of the benchmark on and Intel(R) Core(TM) i7-6600U CPU
+system running at 3.4 GHz:
+
+```
+$ ./run.sh 
+[run.sh] Running the benchmark for      100000 generated numbers,
+         100000 iteration,
+         with -o0 optimization level
+[run.sh] Generating input data ...
+
+real	0m0.341s
+user	0m0.308s
+sys	0m0.028s
+
+[run.sh] Compiling the benchmark ...
+
+real	1m15.642s
+user	1m11.660s
+sys	0m3.904s
+
+[run.sh] Running the benchmark ...
+Testing 6 parity bit computation implementations with:
+100000 iterations;
+unsigned long long size: 8 (must be 8);
+unsigned short size: 2 (must be 2);
+Clock resolution: 0.000000
+
+Check the equivalence of the benchmarked algorithms...
+All computatins agree.
+Running the benchmark. This may take long time...
+
+naive                                   : 235.517098 s
+loop                                    : 831.584979 s
+lookup with arith decomposition         : 100.391544 s
+lookup with type cast decomposition     : 100.590350 s
+arithmetic with shift&xor formula       : 131.424370 s
+arithmetic with multiplication formula  : 101.524371 s
+
+the grand total (sum of all parities for all methods and numbers): even
+
+real	25m1.052s
+user	25m0.932s
+sys	0m0.008s
+```

@@ -141,6 +141,8 @@ void run_benchmark() {
   struct timespec after_arith_shift_xor;
   struct timespec after_arith_mul;
 
+  printf("Running the benchmark. This may take long time...\n\n");
+
   clock_gettime(CLOCK_REALTIME, &start);
 
   p = bench_function(parity_naive, &after_naive, p);
