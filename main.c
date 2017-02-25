@@ -1,41 +1,38 @@
 #include <time.h>
 #include <stdio.h>
+#include <limits.h>
 
-static inline int parity_arith(unsigned long long x) {
-  /* unsigned long long y; */
-  /* y = x ^ (x >> 1); */
-  /* y = y ^ (y >> 2); */
-  /* y = y ^ (y >> 4); */
-  /* y = y ^ (y >> 8); */
-  /* y = y ^ (y >> 16); */
-  /* y = y ^ (y >> 32); */
-  /* return y & 1; */
+/*
+  A prepopulated array for parity value of each possible unsigned short value.
+ */
+int parities[USHRT_MAX];
+
+static inline int parity_arith_shift_xor(unsigned long long x) {
+  unsigned long long y;
+  y = x ^ (x >> 1);
+  y = y ^ (y >> 2);
+  y = y ^ (y >> 4);
+  y = y ^ (y >> 8);
+  y = y ^ (y >> 16);
+  y = y ^ (y >> 32);
+  return y & 1;
+}
+
+static inline int parity_arith_mul(unsigned long long x) {
   x ^= x >> 1;
   x ^= x >> 2;
   x = (x & 0x1111111111111111UL) * 0x1111111111111111UL;
   return (x >> 60) & 1;
 }
 
-int parities[65536];
 
-static inline int parity_mem(unsigned long long x) {
-  /* unsigned short* parts = (unsigned short*)(&x); */
-  /* return 1 & (parities[parts[0]] ^ */
-  /*             parities[parts[1]] ^ */
-  /*             parities[parts[2]] ^ */
-  /*             parities[parts[3]]); */
+static inline int parity_mem_shift(unsigned long long x) {
+  return parities[0xffff&(x ^ (x >> 16) ^ (x >> 32) ^ (x >> 48))];
+}
 
-  /* unsigned short a = 0xffff&x; */
-  /* unsigned short b = 0xffff&(x >> 16); */
-  /* unsigned short c = 0xffff&(x >> 32); */
-  /* unsigned short d = 0xffff&(x >> 48); */
-  /* return 1 & (parities[a] ^ parities[b] ^ parities[c] ^ parities[d]); */
-
-  return
-    parities[0xffff&(x ^
-                     (x >> 16) ^
-                     (x >> 32) ^
-                     (x >> 48))];
+static inline int parity_mem_cast(unsigned long long x) {
+  unsigned short* parts = (unsigned short*)(&x);
+  return parities[parts[0] ^ parts[1] ^ parts[2] ^ parts[3]];
 }
 
 static inline int parity_naive(unsigned long long x) {
@@ -59,10 +56,19 @@ static inline int parity_naive(unsigned long long x) {
     0x1&(x>>61) ^ 0x1&(x>>62) ^ 0x1&(x>>63);
 }
 
+static inline int parity_loop(unsigned long long x) {
+  int parity = 0;
+  while (x) {
+    parity = !parity;
+    x = x & (x - 1);
+  }
+  return parity;
+}
+
 void fill_parity_table() {
   unsigned int i = 0;
-  for (i = 0; i < 65536; ++i) {
-    parities[i] = parity_arith(i);
+  for (i = 0; i < USHRT_MAX; ++i) {
+    parities[i] = parity_arith_shift_xor(i);
   }
 }
 
@@ -71,64 +77,104 @@ double sec_diff(struct timespec* begin, struct timespec* end) {
     (double)(1e-9 * (end->tv_nsec - begin->tv_nsec));
 }
 
+void report_time_interval(const char* name,
+                          struct timespec* begin,
+                          struct timespec* end) {
+  printf("%s parity calculation: %fs\n", name, sec_diff(begin, end));
+}
+
 int main() {
   unsigned long long i;
   int p = 0;
-  fill_parity_table();
-
   struct timespec resolution;
   struct timespec start;
   struct timespec after_naive;
-  struct timespec after_mem;
-  struct timespec after_arith;
+  struct timespec after_loop;
+  struct timespec after_mem_shift;
+  struct timespec after_mem_cast;
+  struct timespec after_arith_shift_xor;
+  struct timespec after_arith_mul;
+
+  printf("Testing 6 parity bit computation implementations with:\n"
+         "%d iterations;\n"
+         "unsigned long long size: %lu (must be 8);\n"
+         "unsigned short size: %lu (must be 2);\n",
+         NITERATIONS,
+         sizeof(unsigned long long),
+         sizeof(unsigned short));
+
+  fill_parity_table();
 
   clock_getres(CLOCK_REALTIME, &resolution);
+  printf("clock resolution: %f\n\n",
+         (double)(resolution.tv_sec) + (double)(1e-9*resolution.tv_nsec));
   clock_gettime(CLOCK_REALTIME, &start);
 
 #define COMPUTE_PARITY(x) p ^= parity_naive(x)
-
   for (i = 0; i < NITERATIONS; ++i) {
 #   include "data.hi"
   }
-
-
 #undef COMPUTE_PARITY
 
   clock_gettime(CLOCK_REALTIME, &after_naive);
 
-#define COMPUTE_PARITY(x) p ^= parity_mem(x)
-
-  for (i = 0; i < NITERATIONS; ++i) {
-#   include "data.hi"
-  }
-
-
-#undef COMPUTE_PARITY
-
-  clock_gettime(CLOCK_REALTIME, &after_mem);
-
-#define COMPUTE_PARITY(x) p ^= parity_arith(x)
+#define COMPUTE_PARITY(x) p ^= parity_loop(x)
   for (i = 0; i < NITERATIONS; ++i) {
 #   include "data.hi"
   }
 #undef COMPUTE_PARITY
 
-  clock_gettime(CLOCK_REALTIME, &after_arith);
+  clock_gettime(CLOCK_REALTIME, &after_loop);
 
-  printf("%d iterations; llu size: %lu; su size: %lu\n",
-         NITERATIONS,
-         sizeof(unsigned long long),
-         sizeof(unsigned short));
-  printf("naive parity calculation: %lfs\n",
-         sec_diff(&start, &after_naive));
-  printf("memory parity calculation: %lfs\n",
-         sec_diff(&after_naive, &after_mem));
-  printf("arithmetic parity calculation: %lfs\n",
-         sec_diff(&after_mem, &after_arith));
+#define COMPUTE_PARITY(x) p ^= parity_mem_shift(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_mem_shift);
+
+#define COMPUTE_PARITY(x) p ^= parity_mem_cast(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_mem_cast);
+
+#define COMPUTE_PARITY(x) p ^= parity_arith_shift_xor(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_arith_shift_xor);
+
+#define COMPUTE_PARITY(x) p ^= parity_arith_mul(x)
+  for (i = 0; i < NITERATIONS; ++i) {
+#   include "data.hi"
+  }
+#undef COMPUTE_PARITY
+
+  clock_gettime(CLOCK_REALTIME, &after_arith_mul);
+
+  report_time_interval("naive", &start, &after_naive);
+  report_time_interval("loop", &after_naive, &after_loop);
+  report_time_interval("lookup with arith decomposition",
+                       &after_loop, &after_mem_shift);
+  report_time_interval("lookup with type cast decomposition",
+                       &after_mem_shift, &after_mem_cast);
+  report_time_interval("arithmetic with shift&xor formula",
+                       &after_mem_cast, &after_arith_shift_xor);
+  report_time_interval("arithmetic with multiplication formula",
+                       &after_arith_shift_xor, &after_arith_mul);
+
   if (p) {
-    printf("odd (incorrect)\n");
+    printf("\nthe grand total (sum of all parities for"
+           " all methods and numbers): odd\n");
+  } else {
+    printf("\nthe grand total (sum of all parities for"
+           " all methods and numbers): even\n");
   }
-  else {
-    printf("even (correct)\n");
-  }
+  return 0;
 }

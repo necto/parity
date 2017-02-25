@@ -1,10 +1,18 @@
-A simple benchmark that compares two approaches to compute a parity bit. The
-approaches are:
+A simple benchmark that compares serveral approaches to compute a parity bit.
+Most of the approaches are taken from
+http://www.graphics.stanford.edu/~seander/bithacks.html#ParityLookupTable
+and somewhat modified:
+* Naive
+* Loop-based
 * Pure arithmetic computation (`parity_arith`), using a logarithmic formula. It computes the
   parity bit for a 64 bit number in 6 steps, using 13 arithmetic operations:
   xor, left_shift and bit_and.
+  * with shift and xor
+  * with multiplication
 * Lookup computation (`parity_mem`). it breaks 64-bit number into 4 16-bit registers, retreives
   precomputed parity bits for each and sums them.
+  * with shift decomposition
+  * with type case decomposition
   
 To run the benchmark, you'll need `emacs` to generate the random input sequence,
 and `gcc` to compile the resulting source file. Once these two tools are in
